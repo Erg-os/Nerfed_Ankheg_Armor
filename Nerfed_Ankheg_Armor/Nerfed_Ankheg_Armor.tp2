@@ -1,0 +1,157 @@
+BACKUP ~Nerfed_Ankheg_Armor/backup~
+AUTHOR ~Erg, at https://forums.beamdog.com~
+VERSION ~v1.1~
+
+ALWAYS
+  INCLUDE ~%MOD_FOLDER%\lib\er_lib_naa.tpa~
+END
+
+LANGUAGE ~English~
+         ~english~
+         ~Nerfed_Ankheg_Armor/tra/english/setup.tra~
+         ~Nerfed_Ankheg_Armor/tra/english/game.tra~
+LANGUAGE ~Italian~
+         ~italian~
+         ~Nerfed_Ankheg_Armor/tra/english/setup.tra~
+         ~Nerfed_Ankheg_Armor/tra/english/game.tra~
+         ~Nerfed_Ankheg_Armor/tra/italian/setup.tra~
+         ~Nerfed_Ankheg_Armor/tra/italian/game.tra~
+
+BEGIN @1
+SUBCOMPONENT @0
+REQUIRE_PREDICATE GAME_IS ~bgee~ @3
+
+// Remove all instances (if any) of the Ankheg Plate Mail
+// (PLAT06) from ITEMEXCL.2DA
+COPY_EXISTING ~ITEMEXCL.2DA~ ~override~
+  PATCH_IF SOURCE_SIZE > 0x10b BEGIN
+    READ_2DA_ENTRIES_NOW ~_#_#_#read_ITEMEXCL~ 1
+    FOR (i = %_#_#_#read_ITEMEXCL% - 1; i >= 0 ; i -= 1) BEGIN
+      READ_2DA_ENTRY_FORMER ~_#_#_#read_ITEMEXCL~ i 0 val
+      PATCH_IF (~%val%~ STRING_EQUAL_CASE ~PLAT06~) BEGIN
+        REMOVE_2DA_ROW i 1
+      END
+    END
+  END
+BUT_ONLY_IF_IT_CHANGES
+
+// Set the Ankheg Plate Mail as non magical and his AC to
+// 2 (-1 vs. slashing, 1 vs piercing and missile) and
+// upgrade his description to reflect the changes
+COPY_EXISTING ~PLAT06.ITM~ ~override~
+  PATCH_IF SOURCE_SIZE > 0x71 BEGIN
+    READ_BYTE 0x18 fl1
+    WRITE_BYTE 0x18 (fl1 BAND 0b10111111)
+    SAY 12 @100
+    READ_LONG  0x6a fx_off
+    READ_SHORT 0x70 fx_num
+    SET base = 2
+    SET mod1 = 3
+    SET mod2 = 1
+    FOR (index1 = 0 ; index1 < fx_num ; ++index1) BEGIN
+      READ_SHORT (fx_off + (0x30 * index1)) opcode
+      PATCH_IF (opcode = 0) BEGIN
+        READ_BYTE(fx_off + (0x30 * index1) + 0x8) fl2
+        PATCH_IF ((%fl2% BAND 0b00000010) = 0b00000010) BEGIN
+          WRITE_LONG (fx_off + (0x30 * index1) + 0x4) %mod2%
+        END 
+        PATCH_IF ((%fl2% BAND 0b00000100) = 0b00000100) BEGIN
+          WRITE_LONG (fx_off + (0x30 * index1) + 0x4) %mod2%
+        END 
+        PATCH_IF ((%fl2% BAND 0b00001000) = 0b00001000) BEGIN
+          WRITE_LONG (fx_off + (0x30 * index1) + 0x4) %mod1%
+        END 
+        PATCH_IF ((%fl2% BAND 0b00010000) = 0b00010000) BEGIN
+          WRITE_LONG (fx_off + (0x30 * index1) + 0x4) %base%
+        END 
+      END
+    END
+    SET dif1 = %base% - %mod1%
+    SET dif2 = %base% - %mod2%
+    PATCH_FOR_EACH offset IN 0x50 0x54 BEGIN
+      READ_LONG ~%offset%~ desc_strref
+      PATCH_IF (desc_strref >= 0 && desc_strref < 2147483646) BEGIN
+        READ_STRREF ~%offset%~ desc
+        INNER_PATCH_SAVE desc ~%desc%~ BEGIN
+          REPLACE_TEXTUALLY ~%er_t102%~ ~%er_t103%~
+        END
+        SAY_EVALUATED ~%offset%~ ~%desc%~
+      END
+    END
+  END
+BUT_ONLY_IF_IT_CHANGES
+
+BEGIN @2
+SUBCOMPONENT @0
+REQUIRE_PREDICATE GAME_IS ~bgee~ @3
+
+// Remove all instances of the Ankheg Plate Mail (PLAT06)
+// from ITEMEXCL.2DA (to avoid duplicates), then add back
+// PLAT06 in the row immediately after PLAT05 (or at the
+// end of the file is PLAT05 is not found)
+COPY_EXISTING ~ITEMEXCL.2DA~ ~override~
+  PATCH_IF SOURCE_SIZE > 0x10b BEGIN
+    READ_2DA_ENTRIES_NOW ~_#_#_#read_ITEMEXCL~ 1
+    FOR (i = %_#_#_#read_ITEMEXCL% - 1; i >= 0 ; i -= 1) BEGIN
+      READ_2DA_ENTRY_FORMER ~_#_#_#read_ITEMEXCL~ i 0 val
+      PATCH_IF (~%val%~ STRING_EQUAL_CASE ~PLAT06~) BEGIN
+        REMOVE_2DA_ROW i 1
+      END
+    END
+    READ_2DA_ENTRIES_NOW ~_#_#_#read_ITEMEXCL~ 1
+    SET val = 0
+    SET row = 0
+    WHILE (row < %_#_#_#read_ITEMEXCL% AND NOT ~%val%~ STRING_EQUAL_CASE ~PLAT05~) BEGIN
+      READ_2DA_ENTRY_FORMER ~_#_#_#read_ITEMEXCL~ %row% 0 val
+      SET row += 1
+    END
+    INSERT_2DA_ROW %row% 1 ~PLAT06  1~
+  END
+BUT_ONLY_IF_IT_CHANGES
+
+// Set the Ankheg Plate Mail as magical (just in case as
+// this flag is not currently used in BGEE), set his AC
+// to 1 (-2 vs. slashing, 0 vs piercing and missile) and
+// upgrade his description to reflect the changes
+COPY_EXISTING ~PLAT06.ITM~ ~override~
+  PATCH_IF SOURCE_SIZE > 0x71 BEGIN
+    READ_BYTE 0x18 fl1
+    WRITE_BYTE 0x18 (fl1 BOR 0b01000000)
+    SAY 12 @101
+    READ_LONG  0x6a fx_off
+    READ_SHORT 0x70 fx_num
+    SET base = 1
+    SET mod1 = 3
+    SET mod2 = 1
+    FOR (index1 = 0 ; index1 < fx_num ; ++index1) BEGIN
+      READ_SHORT (fx_off + (0x30 * index1)) opcode
+      PATCH_IF (opcode = 0) BEGIN
+        READ_BYTE(fx_off + (0x30 * index1) + 0x8) fl2
+        PATCH_IF ((%fl2% BAND 0b00000010) = 0b00000010) BEGIN
+          WRITE_LONG (fx_off + (0x30 * index1) + 0x4) %mod2%
+        END 
+        PATCH_IF ((%fl2% BAND 0b00000100) = 0b00000100) BEGIN
+          WRITE_LONG (fx_off + (0x30 * index1) + 0x4) %mod2%
+        END 
+        PATCH_IF ((%fl2% BAND 0b00001000) = 0b00001000) BEGIN
+          WRITE_LONG (fx_off + (0x30 * index1) + 0x4) %mod1%
+        END 
+        PATCH_IF ((%fl2% BAND 0b00010000) = 0b00010000) BEGIN
+          WRITE_LONG (fx_off + (0x30 * index1) + 0x4) %base%
+        END 
+      END
+    END
+    SET dif1 = %base% - %mod1%
+    SET dif2 = %base% - %mod2%
+    PATCH_FOR_EACH offset IN 0x50 0x54 BEGIN
+      READ_LONG ~%offset%~ desc_strref
+      PATCH_IF (desc_strref >= 0 && desc_strref < 2147483646) BEGIN
+        READ_STRREF ~%offset%~ desc
+        INNER_PATCH_SAVE desc ~%desc%~ BEGIN
+          REPLACE_TEXTUALLY ~%er_t102%~ ~%er_t103%~
+        END
+        SAY_EVALUATED ~%offset%~ ~%desc%~
+      END
+    END
+  END
+BUT_ONLY_IF_IT_CHANGES

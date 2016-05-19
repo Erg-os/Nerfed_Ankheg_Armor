@@ -1,0 +1,4 @@
+@100  = ~Cotta di Piastre di Ankheg~
+@101  = ~Cotta di Piastre di Ankheg +1~
+@102  = ~Classe Armatura:[ ]*[0-9].*\([%LNL%%MNL%%WNL%]\)~
+@103  = ~Classe Armatura: %base% (%dif1% contro danno tagliente, %dif2% contro danno perforante e da proiettile)\1~

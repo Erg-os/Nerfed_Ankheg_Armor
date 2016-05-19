@@ -1,0 +1,4 @@
+@100  = ~Ankheg Plate Mail~
+@101  = ~Ankheg Plate Mail +1~
+@102  = ~Armor Class:[ ]*[0-9].*\([%LNL%%MNL%%WNL%]\)~
+@103  = ~Armor Class: %base% (%dif1% vs. slashing, %dif2% vs. piercing and missile)\1~
